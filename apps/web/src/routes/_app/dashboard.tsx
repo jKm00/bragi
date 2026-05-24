@@ -89,9 +89,14 @@ function DashboardHomePage() {
             <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">
               Bragi
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-5xl">
-              Dashboard
-            </h1>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
+                Dashboard
+              </h1>
+              <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
+                Beta
+              </Badge>
+            </div>
           </div>
           <Button variant="ghost" onClick={signOut}>
             Sign out <LogOut />

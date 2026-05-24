@@ -280,9 +280,14 @@ function RoomPage() {
           <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">
             Room
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {data.room.name ?? "Untitled room"}
-          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {data.room.name ?? "Untitled room"}
+            </h1>
+            <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
+              Beta
+            </Badge>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <Badge variant={data.room.isOwner ? "default" : "secondary"}>

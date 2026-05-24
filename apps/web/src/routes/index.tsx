@@ -33,9 +33,14 @@ function LandingPage() {
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-4xl flex-col justify-center gap-8 px-4 py-10 md:px-6">
         <div className="space-y-4">
-          <Badge variant="secondary" className="w-fit rounded-full px-3 py-1">
-            Live Spotify rooms
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="w-fit rounded-full px-3 py-1">
+              Live Spotify rooms
+            </Badge>
+            <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
+              Beta
+            </Badge>
+          </div>
           <h1 className="text-4xl font-semibold tracking-tight md:text-6xl">
             See what your team is listening to.
           </h1>
