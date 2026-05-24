@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: bragi
+      POSTGRES_USER: bragi
+      POSTGRES_PASSWORD: bragi
+    volumes:
+      - bragi_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  bragi_postgres_data:
