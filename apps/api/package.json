@@ -18,18 +18,20 @@
     }
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.6.11",
     "@bragi/shared": "workspace:*",
     "@hono/node-server": "^1.13.8",
     "better-auth": "^1.6.11",
-    "@better-auth/drizzle-adapter": "^1.6.11",
     "dotenv": "^16.6.1",
     "drizzle-orm": "^1.0.0-beta.18-7eb39f0",
-    "hono": "^4.6.10"
+    "hono": "^4.6.10",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@better-auth/cli": "^1.4.21",
     "@types/node": "^22.19.19",
     "@types/pg": "^8.16.0",
+    "@types/ws": "^8.18.1",
     "drizzle-kit": "^1.0.0-beta.18-7eb39f0",
     "tsx": "^4.19.2",
     "typescript": "^5.4.5"

@@ -1,9 +1,12 @@
-import { serve } from "@hono/node-server";
+import { createAdaptorServer } from "@hono/node-server";
 import { and, eq, or } from "drizzle-orm";
 import { Hono } from "hono";
+import { createServer } from "http";
+import { attachWebSocket } from "./ws-server.js";
 import { auth } from "./auth.js";
 import { db } from "./db/client.js";
 import { roomMemberships, rooms, user } from "./db/schema.js";
+import { fanoutPresence } from "./realtime.js";
 import { cors } from "hono/cors";
 
 const port = Number(process.env.PORT ?? 3000);
@@ -18,7 +21,7 @@ export const app = new Hono<{
 
 // Cors config
 app.use(
-  "*",
+  "/api/*",
   cors({
     origin: ["http://127.0.0.1:5173"],
     credentials: true,
@@ -50,6 +53,80 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
 
 const routes = app
   .get("/api/v1/health", (c) => c.json({ ok: true }))
+  .post("/api/v1/spotify/presence", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+
+    if (!session) return c.json({ message: "Unauthorized" }, 401);
+
+    const spotifyResponse = await auth.api.getAccessToken({
+      headers: c.req.raw.headers,
+      body: { providerId: "spotify", userId: session.user.id },
+    });
+
+    if (!spotifyResponse) return c.json({ message: "Spotify not linked" }, 400);
+
+    const playbackRes = await fetch("https://api.spotify.com/v1/me/player", {
+      headers: {
+        Authorization: `Bearer ${spotifyResponse.accessToken}`,
+      },
+    });
+
+    if (playbackRes.status === 204) {
+      const snapshot = {
+        userId: session.user.id,
+        state: "offline" as const,
+        trackId: null,
+        trackName: null,
+        artistName: null,
+        albumName: null,
+        albumArtUrl: null,
+        spotifyUrl: null,
+        progressMs: null,
+        durationMs: null,
+        syncedAt: new Date().toISOString(),
+      };
+      await fanoutPresence(session.user.id, snapshot);
+      return c.json({ snapshot });
+    }
+
+    if (!playbackRes.ok) {
+      return c.json(
+        { message: "Failed to fetch Spotify playback" },
+        playbackRes.status as 400 | 401 | 403 | 404 | 429 | 500,
+      );
+    }
+
+    const playback = (await playbackRes.json()) as {
+      is_playing: boolean;
+      progress_ms: number | null;
+      item: {
+        id: string | null;
+        name: string | null;
+        duration_ms: number | null;
+        artists: Array<{ name: string }>;
+        album: { name: string | null; images: Array<{ url: string }> };
+        external_urls?: { spotify?: string };
+      } | null;
+    };
+
+    const snapshot = {
+      userId: session.user.id,
+      state: playback.is_playing ? ("playing" as const) : ("paused" as const),
+      trackId: playback.item?.id ?? null,
+      trackName: playback.item?.name ?? null,
+      artistName: playback.item?.artists?.[0]?.name ?? null,
+      albumName: playback.item?.album?.name ?? null,
+      albumArtUrl: playback.item?.album?.images?.[0]?.url ?? null,
+      spotifyUrl: playback.item?.external_urls?.spotify ?? null,
+      progressMs: playback.progress_ms ?? null,
+      durationMs: playback.item?.duration_ms ?? null,
+      syncedAt: new Date().toISOString(),
+    };
+
+    await fanoutPresence(session.user.id, snapshot);
+
+    return c.json({ snapshot });
+  })
   .get("/api/v1/rooms", async (c) => {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
@@ -401,9 +478,14 @@ const routes = app
 
 export type ApiType = typeof routes;
 
-serve({
+const server = createAdaptorServer({
   fetch: app.fetch,
   port,
+  createServer,
 });
+
+attachWebSocket(server as ReturnType<typeof createServer>);
+
+server.listen(port);
 
 console.log(`api listening on http://localhost:${port}`);

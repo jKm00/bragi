@@ -21,3 +21,22 @@ export interface PresenceSnapshot {
   lastPolledAt: string;
   expiresAt: string;
 }
+
+export interface RealtimePresenceSnapshot {
+  userId: string;
+  state: PresenceState;
+  trackId: string | null;
+  trackName: string | null;
+  artistName: string | null;
+  albumName: string | null;
+  albumArtUrl: string | null;
+  spotifyUrl: string | null;
+  progressMs: number | null;
+  durationMs: number | null;
+  syncedAt: string;
+}
+
+export interface RoomPresenceUpdate {
+  roomId: string;
+  snapshot: RealtimePresenceSnapshot;
+}
