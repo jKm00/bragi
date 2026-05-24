@@ -4,16 +4,24 @@ import { Button } from "../components/ui/button";
 import { authClient } from "../lib/auth-client";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+    code: typeof search.code === "string" ? search.code : undefined,
+  }),
   component: LandingPage,
 });
 
 function LandingPage() {
   const session = authClient.useSession();
+  const { redirect, code } = Route.useSearch();
 
   const signIn = async () => {
     await authClient.signIn.social({
       provider: "spotify",
-      callbackURL: "http://127.0.0.1:5173/dashboard",
+      callbackURL:
+        redirect === "join" && code
+          ? `http://127.0.0.1:5173/rooms/join?code=${code}`
+          : "http://127.0.0.1:5173/dashboard",
     });
   };
 
@@ -35,6 +43,12 @@ function LandingPage() {
             Bragi keeps room presence in sync while the app is open.
           </p>
         </div>
+
+        {redirect === "join" && code ? (
+          <div className="rounded-2xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+            Sign in with Spotify to join this room.
+          </div>
+        ) : null}
 
         {session.data?.session ? (
           <div className="flex flex-wrap gap-3">
