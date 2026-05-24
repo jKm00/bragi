@@ -118,26 +118,28 @@ function DashboardHomePage() {
                     key={room.id}
                     className="rounded-2xl border border-border/60 bg-background px-4 py-4"
                   >
-                    <Link
-                      to="/rooms/$roomId"
-                      params={{ roomId: room.id }}
-                      className="flex items-center justify-between gap-4"
-                    >
-                      <span className="text-left">
-                        <span className="block text-base font-medium">
-                          {room.name ?? "Untitled room"}
+                    <div className="flex items-center justify-between gap-4">
+                      <Link
+                        to="/rooms/$roomId"
+                        params={{ roomId: room.id }}
+                        className="flex flex-1 items-center justify-between gap-4"
+                      >
+                        <span className="text-left">
+                          <span className="block text-base font-medium">
+                            {room.name ?? "Untitled room"}
+                          </span>
+                          <span className="block text-sm text-muted-foreground">
+                            {room.isOwner ? "Invite available" : "Member"}
+                          </span>
                         </span>
-                        <span className="block text-sm text-muted-foreground">
-                          {room.isOwner ? "Invite available" : "Member"}
+                        <span className="flex items-center gap-2">
+                          <Badge variant={room.isOwner ? "default" : "secondary"}>
+                            {room.isOwner ? "Owner" : "Member"}
+                          </Badge>
+                          <Badge variant="secondary">Open</Badge>
                         </span>
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <Badge variant={room.isOwner ? "default" : "secondary"}>
-                          {room.isOwner ? "Owner" : "Member"}
-                        </Badge>
-                        <Badge variant="secondary">Open</Badge>
-                      </span>
-                    </Link>
+                      </Link>
+                    </div>
                     {room.isOwner && room.inviteToken ? (
                       <div className="mt-3">
                         <div className="text-xs font-medium text-muted-foreground">

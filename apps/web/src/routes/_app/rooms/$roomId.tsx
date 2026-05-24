@@ -463,7 +463,7 @@ function RoomPage() {
                     return (
                       <div
                         key={member.userId}
-                        className="flex items-center justify-between rounded-2xl border border-border/60 bg-background px-4 py-3"
+                        className="flex items-center justify-between px-2 py-3"
                       >
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{member.name}</span>

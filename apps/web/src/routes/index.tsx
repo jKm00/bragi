@@ -23,7 +23,7 @@ function LandingPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen bg-background bg-[radial-gradient(80%_60%_at_15%_0%,rgba(56,189,248,0.12),transparent)] text-foreground">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-4 py-10 md:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div className="space-y-6">
@@ -59,7 +59,7 @@ function LandingPage() {
             )}
           </div>
 
-          <Card className="border-border/70 bg-card/80 shadow-sm backdrop-blur">
+          <Card className="border-border/60 bg-card/70 shadow-sm backdrop-blur">
             <CardHeader>
               <CardTitle>What Bragi does</CardTitle>
               <CardDescription>
