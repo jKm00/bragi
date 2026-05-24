@@ -1,4 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { authClient } from "../lib/auth-client";
 
 export const Route = createFileRoute("/")({
@@ -20,27 +23,57 @@ function LandingPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6">
-      <div>
-        <h1 className="text-4xl font-semibold tracking-tight">Bragi</h1>
-        <p className="mt-3 max-w-xl text-base text-slate-600">
-          See what coworkers are listening to while the app is open.
-        </p>
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-4 py-10 md:px-6 lg:px-8">
+        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+          <div className="space-y-6">
+            <Badge variant="secondary" className="w-fit rounded-full px-3 py-1">
+              Live room presence for Spotify
+            </Badge>
+            <h1 className="max-w-3xl text-5xl font-semibold tracking-tight md:text-7xl">
+              See what your team is listening to, while the app is open.
+            </h1>
+            <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
+              Bragi keeps room presence, invite flows, and Spotify state in sync.
+              Sign in once, create a room, and share an invite link.
+            </p>
+
+            {session.data?.session ? (
+              <div className="flex flex-wrap gap-3">
+                <Button asChild size="lg">
+                  <Link to="/dashboard">Open dashboard</Link>
+                </Button>
+                <Button onClick={signOut} size="lg" variant="outline">
+                  Log out
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={signIn} size="lg">
+                  Sign in with Spotify
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <Link to="/dashboard">Preview dashboard</Link>
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <Card className="border-border/70 bg-card/80 shadow-sm backdrop-blur">
+            <CardHeader>
+              <CardTitle>What Bragi does</CardTitle>
+              <CardDescription>
+                Auth, rooms, invite links, and presence all in one flow.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <p>• Spotify sign-in creates your app identity.</p>
+              <p>• Rooms are invite-only and easy to join.</p>
+              <p>• Dashboard keeps your active rooms in one place.</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-      {session.data?.session ? (
-        <>
-          <Link to="/dashboard">Go to dashboard</Link>
-          <button onClick={signOut}>Log out</button>
-        </>
-      ) : (
-        <button
-          className="w-fit rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:opacity-90"
-          onClick={signIn}
-          type="button"
-        >
-          Sign in with Spotify
-        </button>
-      )}
     </main>
   );
 }
