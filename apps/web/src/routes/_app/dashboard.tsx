@@ -84,9 +84,6 @@ function DashboardHomePage() {
               Dashboard
             </h1>
           </div>
-          <Button asChild variant="ghost">
-            <Link to="/">Home</Link>
-          </Button>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.35fr_0.9fr]">

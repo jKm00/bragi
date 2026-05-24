@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, Crown, LogOut, Trash2 } from "lucide-react";
+import { Crown, LogOut, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -221,6 +221,25 @@ function RoomPage() {
         <div className="space-y-6">
           <Card className="border-border/70 bg-card/80 shadow-sm backdrop-blur">
             <CardHeader>
+              <CardTitle>Room details</CardTitle>
+              <CardDescription>Key info about this room.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex items-center justify-between">
+                <span>Owner</span>
+                <span className="text-foreground">
+                  {owner?.name ?? "Unknown"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Members</span>
+                <span className="text-foreground">{members.length}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/70 bg-card/80 shadow-sm backdrop-blur">
+            <CardHeader>
               <CardTitle>Room actions</CardTitle>
               <CardDescription>Actions you can do for this room.</CardDescription>
             </CardHeader>
@@ -264,19 +283,6 @@ function RoomPage() {
             </CardContent>
           </Card>
 
-          {owner ? (
-            <Card className="border-border/70 bg-card/80 shadow-sm backdrop-blur">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  Owner controls
-                </CardTitle>
-                <CardDescription>
-                  Current owner: {owner.name}
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          ) : null}
         </div>
       </div>
 
