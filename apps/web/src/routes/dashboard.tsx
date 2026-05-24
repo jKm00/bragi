@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
+import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { authClient } from "../lib/auth-client";
 
 type Room = {
   id: string;
@@ -9,8 +10,8 @@ type Room = {
 
 async function fetchRooms(): Promise<Room[]> {
   return [
-    { id: '1', name: 'Design' },
-    { id: '2', name: 'Engineering' },
+    { id: "1", name: "Design" },
+    { id: "2", name: "Engineering" },
   ];
 }
 
@@ -18,15 +19,22 @@ async function createRoom(name: string): Promise<Room> {
   return { id: crypto.randomUUID(), name };
 }
 
-export const Route = createFileRoute('/dashboard')({
+export const Route = createFileRoute("/dashboard")({
+  beforeLoad: async () => {
+    const session = await authClient.getSession();
+
+    if (!session?.data) {
+      throw redirect({ to: "/" });
+    }
+  },
   component: DashboardPage,
 });
 
 function DashboardPage() {
-  const [name, setName] = useState('');
+  const [name, setName] = useState("");
 
   const roomsQuery = useQuery({
-    queryKey: ['rooms'],
+    queryKey: ["rooms"],
     queryFn: fetchRooms,
   });
 
@@ -53,10 +61,14 @@ function DashboardPage() {
             event.preventDefault();
             if (!name.trim()) return;
             createRoomMutation.mutate(name);
-            setName('');
+            setName("");
           }}
         >
-          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Room name" />
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Room name"
+          />
           <button type="submit">Create</button>
         </form>
       </section>

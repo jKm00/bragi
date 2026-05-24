@@ -11,9 +11,9 @@
 
 ## High-Level Shape
 1. Frontend authenticates through Better Auth.
-2. The browser keeps the Spotify session for the active tab and polls Spotify while the app is open.
+2. Frontend sends Spotify actions to the API, and the API proxies Spotify requests using server-side access tokens.
 3. The browser syncs meaningful presence updates and a lightweight heartbeat to the backend over WebSockets.
-4. Backend stores app user, room membership, invite state, and the latest presence snapshots in Postgres.
+4. Backend stores app user, room membership, invite state, Spotify account tokens, and the latest presence snapshots in Postgres.
 5. A tiny cleanup job expires stale presence when the client stops heartbeating.
 6. Frontend renders room state from the backend and receives live updates over WebSockets.
 
@@ -32,14 +32,15 @@
 ## Realtime Flow
 1. User connects to a room over WebSocket.
 2. Backend subscribes that socket to the room channel.
-3. Browser polls Spotify while the tab is open.
-4. Browser sends changed presence and heartbeat events to the backend.
-5. Backend persists the latest snapshot and broadcasts the updated active list to room subscribers.
+3. Browser requests Spotify state through the API.
+4. API fetches or refreshes the Spotify access token server-side, calls Spotify, then returns the result to the browser.
+5. Browser sends changed presence and heartbeat events to the backend.
+6. Backend persists the latest snapshot and broadcasts the updated active list to room subscribers.
 
 ## Polling Strategy
-- Use a browser-side adaptive scheduler.
-- Poll `Get Playback State` while the app is open.
-- Track playback timestamp and duration to estimate the next useful poll.
+- Use a browser-side scheduler only for app state changes.
+- Request Spotify playback state from the API.
+- API owns Spotify access token retrieval and refresh.
 - Send only meaningful presence changes to the backend.
 - Send a lightweight heartbeat to prove the tab is still open.
 - Stop polling when the tab closes or the user leaves the room.
@@ -49,7 +50,8 @@
 1. User signs in with Spotify.
 2. Better Auth creates or resolves the app user.
 3. Spotify account is linked one-to-one with the app user.
-4. Keep the browser session responsible for the Spotify polling loop in the POC.
+4. Better Auth stores encrypted Spotify account tokens server-side.
+5. The API fetches Spotify access tokens on demand and refreshes them when needed.
 
 ## Room Rules
 - Invite-only rooms.
@@ -67,12 +69,13 @@
 ## Risks
 - Spotify rate limits if the polling cadence is too aggressive.
 - Browser tab close ends presence immediately after timeout.
-- Browser session token handling is less secure than a server-owned flow.
+- Exposing Spotify tokens to the browser would be unnecessary and risky.
 - Private session and hidden state ambiguity.
 
 ## Mitigations
-- Adaptive browser polling cadence.
+- Adaptive request cadence.
 - Short-lived active presence cache.
 - WebSocket heartbeat and stale timeout.
 - Clear empty/stale states in UI.
 - Minimal OAuth scopes.
+- Keep Spotify token access server-side only.

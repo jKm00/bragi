@@ -13,7 +13,7 @@ Build a web app that shows what coworkers in a room are listening to on Spotify 
   - all room members
   - owner controls in a dialog
 - Presence updates are client-driven and only work while the web app is open.
-- The browser polls Spotify and syncs meaningful changes to the backend over WebSockets.
+- The browser asks the API to poll Spotify, and the API proxies Spotify requests using server-side OAuth tokens.
 - Users disappear from the active list shortly after closing the tab or stopping heartbeat.
 - Users can toggle per-room hidden mode or anonymous mode.
 - Hidden and anonymous modes are mutually exclusive.

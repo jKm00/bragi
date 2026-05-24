@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { authClient } from "../lib/auth-client";
 
 export const Route = createFileRoute("/")({
@@ -6,11 +6,17 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
+  const session = authClient.useSession();
+
   const signIn = async () => {
     await authClient.signIn.social({
       provider: "spotify",
       callbackURL: "http://127.0.0.1:5173/dashboard",
     });
+  };
+
+  const signOut = async () => {
+    await authClient.signOut();
   };
 
   return (
@@ -21,13 +27,20 @@ function LandingPage() {
           See what coworkers are listening to while the app is open.
         </p>
       </div>
-      <button
-        className="w-fit rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:opacity-90"
-        onClick={signIn}
-        type="button"
-      >
-        Sign in with Spotify
-      </button>
+      {session.data?.session ? (
+        <>
+          <Link to="/dashboard">Go to dashboard</Link>
+          <button onClick={signOut}>Log out</button>
+        </>
+      ) : (
+        <button
+          className="w-fit rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:opacity-90"
+          onClick={signIn}
+          type="button"
+        >
+          Sign in with Spotify
+        </button>
+      )}
     </main>
   );
 }

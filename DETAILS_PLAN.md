@@ -12,7 +12,7 @@
 - [ ] Integrate Better Auth.
 - [ ] Configure Spotify OAuth login.
 - [ ] Create app user automatically on first Spotify sign-in.
-- [ ] Keep Spotify session usable in the browser for the active tab.
+- [ ] Store Spotify tokens server-side and proxy Spotify requests through the API.
 
 ## Phase 3: Rooms
 - [ ] Create room model and owner relationship.
@@ -29,8 +29,8 @@
 - [ ] Delete room memberships and settings when a room is deleted.
 
 ## Phase 5: Presence
-- [ ] Implement browser-side Spotify playback polling.
-- [ ] Poll `Get Playback State` while the app is open.
+- [ ] Implement API proxy for Spotify playback polling.
+- [ ] Poll `Get Playback State` through the API while the app is open.
 - [ ] Add adaptive poll cadence based on progress and track length.
 - [ ] Sync meaningful presence changes to the backend over WebSockets.
 - [ ] Add lightweight heartbeat while the app is open.
@@ -54,7 +54,7 @@
 
 ## Phase 8: Polish
 - [ ] Add loading and error states.
-- [ ] Add basic Spotify rate-limit/backoff handling in the browser.
+- [ ] Add basic Spotify rate-limit/backoff handling in the API proxy.
 - [ ] Add room lifecycle edge-case handling.
 - [ ] Verify Spotify link/open behavior.
 

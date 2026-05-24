@@ -15,6 +15,10 @@
 - `user_id` uuid fk -> users.id
 - `provider` text
 - `provider_account_id` text
+- `access_token` text nullable encrypted
+- `refresh_token` text nullable encrypted
+- `access_token_expires_at` timestamptz nullable
+- `refresh_token_expires_at` timestamptz nullable
 - `created_at` timestamptz
 - unique(`provider`, `provider_account_id`)
 
@@ -84,5 +88,6 @@
 - Keep room membership and per-room settings separate.
 - Delete room metadata and membership/settings rows when a room is deleted.
 - Keep only the latest presence snapshot for each user.
-- For the POC, the browser owns Spotify polling and token refresh in-session.
+- The API owns Spotify token access and refresh.
+- The browser never stores Spotify access or refresh tokens.
 - The backend only stores the latest synced presence state and heartbeat timestamps.
