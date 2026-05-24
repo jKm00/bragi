@@ -25,16 +25,15 @@ export const app = new Hono<{
 }>();
 
 // Cors config
-app.use(
-  "/api/*",
-  cors({
-    origin:
-      process.env.NODE_ENV === "development"
-        ? ["http://127.0.0.1:5173", "http://127.0.0.1:4173"]
-        : [],
-    credentials: true,
-  }),
-);
+if (process.env.NODE_ENV !== "production") {
+  app.use(
+    "/api/*",
+    cors({
+      origin: ["http://127.0.0.1:5173", "http://127.0.0.1:4173"],
+      credentials: true,
+    }),
+  );
+}
 
 // Auth middleware
 app.use("*", async (c, next) => {
