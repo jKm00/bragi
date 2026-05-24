@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient } from "@/lib/api-client";
+import { authClient } from "@/lib/auth-client";
 
 type Room = {
   id: string;
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/_app/dashboard")({
 
 function DashboardHomePage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [inviteToken, setInviteToken] = useState("");
 
@@ -72,6 +74,11 @@ function DashboardHomePage() {
 
   const rooms = roomsQuery.data?.rooms ?? [];
 
+  const signOut = async () => {
+    await authClient.signOut();
+    await navigate({ to: "/" });
+  };
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6 md:px-6 lg:px-8">
@@ -84,6 +91,9 @@ function DashboardHomePage() {
               Dashboard
             </h1>
           </div>
+          <Button variant="ghost" onClick={signOut}>
+            Sign out
+          </Button>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.35fr_0.9fr]">

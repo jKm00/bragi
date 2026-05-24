@@ -36,6 +36,7 @@ let isRunning = false;
 let lastSnapshot: RealtimePresenceSnapshot | null = null;
 
 const PAUSED_POLL_MS = 60_000;
+const TRACK_END_BUFFER_MS = 2_000;
 const HEARTBEAT_MS = 20_000;
 
 function getWebSocketUrl() {
@@ -70,10 +71,10 @@ function calculateNextPoll(snapshot: RealtimePresenceSnapshot | null, playback: 
 
   const remaining = snapshot.durationMs - snapshot.progressMs;
   if (!Number.isFinite(remaining) || remaining <= 0) {
-    return 2_000;
+    return TRACK_END_BUFFER_MS;
   }
 
-  return Math.max(Math.min(remaining, 30_000), 2_000);
+  return Math.max(remaining + TRACK_END_BUFFER_MS, TRACK_END_BUFFER_MS);
 }
 
 function getPlaybackSnapshot(snapshot: RealtimePresenceSnapshot | null): PlaybackSnapshot | null {
@@ -166,7 +167,7 @@ export async function startRealtime() {
     stopHeartbeat();
   });
 
-  schedulePoll(1_000);
+  pollSpotify();
 
   window.addEventListener("beforeunload", stopRealtime);
 }
