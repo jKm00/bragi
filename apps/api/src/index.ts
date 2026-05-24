@@ -1,11 +1,11 @@
 import { createAdaptorServer } from "@hono/node-server";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { Hono } from "hono";
 import { createServer } from "http";
 import { attachWebSocket } from "./ws-server.js";
 import { auth } from "./auth.js";
 import { db } from "./db/client.js";
-import { roomMemberships, rooms, user } from "./db/schema.js";
+import { presenceSnapshots, roomMemberships, rooms, user } from "./db/schema.js";
 import { fanoutPresence } from "./realtime.js";
 import { cors } from "hono/cors";
 
@@ -85,6 +85,39 @@ const routes = app
         durationMs: null,
         syncedAt: new Date().toISOString(),
       };
+
+      await db
+        .insert(presenceSnapshots)
+        .values({
+          userId: session.user.id,
+          provider: "spotify",
+          trackId: null,
+          trackName: null,
+          artistName: null,
+          albumName: null,
+          albumArtUrl: null,
+          spotifyUrl: null,
+          progressMs: null,
+          durationMs: null,
+          syncedAt: new Date(),
+          state: "offline",
+        })
+        .onConflictDoUpdate({
+          target: presenceSnapshots.userId,
+          set: {
+            trackId: null,
+            trackName: null,
+            artistName: null,
+            albumName: null,
+            albumArtUrl: null,
+            spotifyUrl: null,
+            progressMs: null,
+            durationMs: null,
+            syncedAt: new Date(),
+            state: "offline",
+          },
+        });
+
       await fanoutPresence(session.user.id, snapshot);
       return c.json({ snapshot });
     }
@@ -122,6 +155,38 @@ const routes = app
       durationMs: playback.item?.duration_ms ?? null,
       syncedAt: new Date().toISOString(),
     };
+
+    await db
+      .insert(presenceSnapshots)
+      .values({
+        userId: session.user.id,
+        provider: "spotify",
+        trackId: snapshot.trackId,
+        trackName: snapshot.trackName,
+        artistName: snapshot.artistName,
+        albumName: snapshot.albumName,
+        albumArtUrl: snapshot.albumArtUrl,
+        spotifyUrl: snapshot.spotifyUrl,
+        progressMs: snapshot.progressMs,
+        durationMs: snapshot.durationMs,
+        syncedAt: new Date(snapshot.syncedAt),
+        state: snapshot.state,
+      })
+      .onConflictDoUpdate({
+        target: presenceSnapshots.userId,
+        set: {
+          trackId: snapshot.trackId,
+          trackName: snapshot.trackName,
+          artistName: snapshot.artistName,
+          albumName: snapshot.albumName,
+          albumArtUrl: snapshot.albumArtUrl,
+          spotifyUrl: snapshot.spotifyUrl,
+          progressMs: snapshot.progressMs,
+          durationMs: snapshot.durationMs,
+          syncedAt: new Date(snapshot.syncedAt),
+          state: snapshot.state,
+        },
+      });
 
     await fanoutPresence(session.user.id, snapshot);
 
@@ -356,6 +421,70 @@ const routes = app
     ];
 
     return c.json({ members });
+  })
+  .get("/api/v1/rooms/:roomId/presence", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+
+    if (!session) return c.json({ message: "Unauthorized" }, 401);
+
+    const roomId = c.req.param("roomId");
+    const room = await db
+      .select({ id: rooms.id, ownerUserId: rooms.ownerUserId })
+      .from(rooms)
+      .where(eq(rooms.id, roomId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (!room) return c.json({ message: "Room not found" }, 404);
+
+    const membership = await db
+      .select({ id: roomMemberships.id })
+      .from(roomMemberships)
+      .where(
+        and(
+          eq(roomMemberships.roomId, room.id),
+          eq(roomMemberships.userId, session.user.id),
+          eq(roomMemberships.status, "active"),
+        ),
+      )
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (room.ownerUserId !== session.user.id && !membership) {
+      return c.json({ message: "Forbidden" }, 403);
+    }
+
+    const memberIds = await db
+      .select({ userId: roomMemberships.userId })
+      .from(roomMemberships)
+      .where(
+        and(
+          eq(roomMemberships.roomId, room.id),
+          eq(roomMemberships.status, "active"),
+        ),
+      )
+      .then((rows) => rows.map((row) => row.userId));
+
+    const uniqueMemberIds = Array.from(new Set([...memberIds, room.ownerUserId]));
+
+    const snapshots = await db
+      .select({
+        userId: presenceSnapshots.userId,
+        trackId: presenceSnapshots.trackId,
+        trackName: presenceSnapshots.trackName,
+        artistName: presenceSnapshots.artistName,
+        albumName: presenceSnapshots.albumName,
+        albumArtUrl: presenceSnapshots.albumArtUrl,
+        spotifyUrl: presenceSnapshots.spotifyUrl,
+        progressMs: presenceSnapshots.progressMs,
+        durationMs: presenceSnapshots.durationMs,
+        syncedAt: presenceSnapshots.syncedAt,
+        state: presenceSnapshots.state,
+      })
+      .from(presenceSnapshots)
+      .where(inArray(presenceSnapshots.userId, uniqueMemberIds));
+
+    return c.json({ snapshots });
   })
   .post("/api/v1/rooms/:roomId/leave", async (c) => {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });

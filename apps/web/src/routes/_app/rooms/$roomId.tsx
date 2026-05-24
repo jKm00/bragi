@@ -57,12 +57,16 @@ type RealtimePresenceSnapshot = {
   spotifyUrl: string | null;
   progressMs: number | null;
   durationMs: number | null;
-  syncedAt: string;
+  syncedAt: string | null;
 };
 
 type RoomPresenceUpdate = {
   roomId: string;
   snapshot: RealtimePresenceSnapshot;
+};
+
+type RoomPresenceResponse = {
+  snapshots: RealtimePresenceSnapshot[];
 };
 
 export const Route = createFileRoute("/_app/rooms/$roomId")({
@@ -98,6 +102,7 @@ function RoomPage() {
   const [presenceByUserId, setPresenceByUserId] = useState<
     Record<string, RealtimePresenceSnapshot>
   >({});
+  const [presenceLoading, setPresenceLoading] = useState(true);
 
   const membersQuery = useQuery({
     queryKey: ["room-members", data.accessible ? data.room.id : "no-room"],
@@ -187,6 +192,31 @@ function RoomPage() {
   useEffect(() => {
     if (!data.accessible) return;
     setPresenceByUserId({});
+    setPresenceLoading(true);
+
+    apiClient.api.v1.rooms[":roomId"].presence
+      .$get({
+        param: { roomId: data.room.id },
+      })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return (await res.json()) as RoomPresenceResponse;
+      })
+      .then((payload) => {
+        if (!payload) return;
+        const next: Record<string, RealtimePresenceSnapshot> = {};
+        payload.snapshots.forEach((snapshot) => {
+          if (["offline", "hidden", "private"].includes(snapshot.state)) return;
+          next[snapshot.userId] = {
+            ...snapshot,
+            syncedAt: snapshot.syncedAt ?? new Date().toISOString(),
+          };
+        });
+        setPresenceByUserId(next);
+      })
+      .finally(() => {
+        setPresenceLoading(false);
+      });
 
     return subscribeToPresence((message: RoomPresenceUpdate) => {
       if (message.roomId !== data.room.id) return;
@@ -197,7 +227,10 @@ function RoomPage() {
           delete next[snapshot.userId];
           return next;
         }
-        next[snapshot.userId] = snapshot;
+        next[snapshot.userId] = {
+          ...snapshot,
+          syncedAt: snapshot.syncedAt ?? new Date().toISOString(),
+        };
         return next;
       });
     });
@@ -250,7 +283,11 @@ function RoomPage() {
               Live presence from this room.
             </p>
           </div>
-          {activeListeners.length ? (
+          {presenceLoading ? (
+            <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+              Loading active listeners...
+            </div>
+          ) : activeListeners.length ? (
             <div
               className="grid gap-2"
               style={{

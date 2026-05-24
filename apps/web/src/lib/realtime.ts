@@ -134,6 +134,12 @@ function stopPolling() {
   }
 }
 
+export function resetPolling() {
+  if (!isRunning) return;
+  stopPolling();
+  pollSpotify();
+}
+
 function closeSocket() {
   if (!socket) return;
   socket.close();

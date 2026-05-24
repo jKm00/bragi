@@ -1,5 +1,6 @@
 import {
   boolean,
+  integer,
   pgEnum,
   pgTable,
   text,
@@ -179,5 +180,10 @@ export const presenceSnapshots = pgTable("presence_snapshots", {
   albumName: text("album_name"),
   albumArtUrl: text("album_art_url"),
   spotifyUrl: text("spotify_url"),
+  progressMs: integer("progress_ms"),
+  durationMs: integer("duration_ms"),
+  syncedAt: timestamp("synced_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   state: presenceStateEnum("state").notNull(),
 });
