@@ -75,7 +75,6 @@ const routes = app
       const snapshot = {
         userId: session.user.id,
         state: "offline" as const,
-        isMuted: false,
         trackId: null,
         trackName: null,
         artistName: null,
@@ -100,7 +99,6 @@ const routes = app
           spotifyUrl: null,
           progressMs: null,
           durationMs: null,
-          isMuted: false,
           syncedAt: new Date(),
           state: "offline",
         })
@@ -115,7 +113,6 @@ const routes = app
             spotifyUrl: null,
             progressMs: null,
             durationMs: null,
-            isMuted: false,
             syncedAt: new Date(),
             state: "offline",
           },
@@ -146,16 +143,9 @@ const routes = app
       } | null;
     };
 
-    const isMuted =
-      playback.device?.is_muted ??
-      (playback.device?.volume_percent != null
-        ? playback.device.volume_percent <= 0
-        : false);
-
     const snapshot = {
       userId: session.user.id,
       state: playback.is_playing ? ("playing" as const) : ("paused" as const),
-      isMuted,
       trackId: playback.item?.id ?? null,
       trackName: playback.item?.name ?? null,
       artistName: playback.item?.artists?.[0]?.name ?? null,
@@ -180,7 +170,6 @@ const routes = app
         spotifyUrl: snapshot.spotifyUrl,
         progressMs: snapshot.progressMs,
         durationMs: snapshot.durationMs,
-        isMuted: snapshot.isMuted,
         syncedAt: new Date(snapshot.syncedAt),
         state: snapshot.state,
       })
@@ -195,7 +184,6 @@ const routes = app
           spotifyUrl: snapshot.spotifyUrl,
           progressMs: snapshot.progressMs,
           durationMs: snapshot.durationMs,
-          isMuted: snapshot.isMuted,
           syncedAt: new Date(snapshot.syncedAt),
           state: snapshot.state,
         },
@@ -498,7 +486,6 @@ const routes = app
         spotifyUrl: presenceSnapshots.spotifyUrl,
         progressMs: presenceSnapshots.progressMs,
         durationMs: presenceSnapshots.durationMs,
-        isMuted: presenceSnapshots.isMuted,
         syncedAt: presenceSnapshots.syncedAt,
         state: presenceSnapshots.state,
       })

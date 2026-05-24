@@ -182,7 +182,6 @@ export const presenceSnapshots = pgTable("presence_snapshots", {
   spotifyUrl: text("spotify_url"),
   progressMs: integer("progress_ms"),
   durationMs: integer("duration_ms"),
-  isMuted: boolean("is_muted").notNull().default(false),
   syncedAt: timestamp("synced_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
