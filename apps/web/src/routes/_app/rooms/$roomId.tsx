@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Crown, LogOut, Trash2 } from "lucide-react";
@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { apiClient } from "@/lib/api-client";
+import { subscribeToPresence } from "@/lib/realtime";
 
 type RoomAccessResponse =
   | {
@@ -45,6 +46,25 @@ type MembersResponse = {
   members: Member[];
 };
 
+type RealtimePresenceSnapshot = {
+  userId: string;
+  state: "playing" | "paused" | "offline" | "hidden" | "private";
+  trackId: string | null;
+  trackName: string | null;
+  artistName: string | null;
+  albumName: string | null;
+  albumArtUrl: string | null;
+  spotifyUrl: string | null;
+  progressMs: number | null;
+  durationMs: number | null;
+  syncedAt: string;
+};
+
+type RoomPresenceUpdate = {
+  roomId: string;
+  snapshot: RealtimePresenceSnapshot;
+};
+
 export const Route = createFileRoute("/_app/rooms/$roomId")({
   loader: async ({ params }) => {
     const res = await apiClient.api.v1.rooms[":roomId"].$get({
@@ -68,10 +88,16 @@ function RoomPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const data = Route.useLoaderData();
+  const [sidebarTab, setSidebarTab] = useState<"members" | "actions">(
+    "members",
+  );
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [transferTarget, setTransferTarget] = useState<Member | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [presenceByUserId, setPresenceByUserId] = useState<
+    Record<string, RealtimePresenceSnapshot>
+  >({});
 
   const membersQuery = useQuery({
     queryKey: ["room-members", data.accessible ? data.room.id : "no-room"],
@@ -90,7 +116,9 @@ function RoomPage() {
   const transferMutation = useMutation({
     mutationFn: async (userId: string) => {
       if (!data.accessible) throw new Error("Room is not accessible");
-      const res = await apiClient.api.v1.rooms[":roomId"].transfer[":userId"].$post({
+      const res = await apiClient.api.v1.rooms[":roomId"].transfer[
+        ":userId"
+      ].$post({
         param: { roomId: data.room.id, userId },
       });
       if (!res.ok) throw new Error("Failed to transfer ownership");
@@ -137,10 +165,43 @@ function RoomPage() {
     () => members.find((member) => member.role === "owner"),
     [members],
   );
+  const memberLookup = useMemo(
+    () => new Map(members.map((member) => [member.userId, member])),
+    [members],
+  );
   const transferCandidates = useMemo(
     () => members.filter((member) => member.role !== "owner"),
     [members],
   );
+  const activeListeners = useMemo(() => {
+    const listeners = Object.values(presenceByUserId).filter((listener) =>
+      ["playing", "paused"].includes(listener.state),
+    );
+    const sorted = listeners.sort((a, b) => {
+      if (a.state === b.state) return 0;
+      return a.state === "playing" ? -1 : 1;
+    });
+    return sorted;
+  }, [presenceByUserId]);
+
+  useEffect(() => {
+    if (!data.accessible) return;
+    setPresenceByUserId({});
+
+    return subscribeToPresence((message: RoomPresenceUpdate) => {
+      if (message.roomId !== data.room.id) return;
+      const snapshot = message.snapshot;
+      setPresenceByUserId((prev) => {
+        const next = { ...prev };
+        if (["offline", "hidden", "private"].includes(snapshot.state)) {
+          delete next[snapshot.userId];
+          return next;
+        }
+        next[snapshot.userId] = snapshot;
+        return next;
+      });
+    });
+  }, [data.accessible, data.accessible ? data.room.id : ""]);
 
   if (!data.accessible) {
     return (
@@ -181,45 +242,89 @@ function RoomPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card className="border-border/70 bg-card/80 shadow-sm backdrop-blur">
-          <CardHeader>
-            <CardTitle>Members</CardTitle>
-            <CardDescription>
-              Active people in this room.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {membersQuery.isPending ? (
-              <div className="space-y-3 text-sm text-muted-foreground">
-                Loading members...
-              </div>
-            ) : members.length ? (
-              members.map((member) => (
-                <div
-                  key={member.userId}
-                  className="flex items-center justify-between rounded-2xl border border-border/60 bg-background px-4 py-3"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{member.name}</span>
-                      {member.role === "owner" ? (
-                        <Badge variant="secondary">Owner</Badge>
+      <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
+        <section className="space-y-4">
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold">Active listeners</h2>
+            <p className="text-sm text-muted-foreground">
+              Live presence from this room.
+            </p>
+          </div>
+          {activeListeners.length ? (
+            <div
+              className="grid gap-2"
+              style={{
+                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+              }}
+            >
+              {activeListeners.map((listener) => {
+                const member = memberLookup.get(listener.userId);
+                const isPlaying = listener.state === "playing";
+                return (
+                  <div
+                    key={listener.userId}
+                    className="flex gap-4 rounded-2xl border border-border/60 bg-background p-4"
+                  >
+                    <div className="h-16 w-16 overflow-hidden rounded-xl bg-muted/40">
+                      {listener.albumArtUrl ? (
+                        <img
+                          src={listener.albumArtUrl}
+                          alt={listener.albumName ?? "Album art"}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                          No art
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {member?.name ?? "Listener"}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={
+                            isPlaying
+                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                              : "border-amber-500/40 bg-amber-500/10 text-amber-500"
+                          }
+                        >
+                          {isPlaying ? "Playing" : "Paused"}
+                        </Badge>
+                      </div>
+                      <div className="text-sm font-medium text-foreground">
+                        {listener.trackName ?? "Unknown track"}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {listener.artistName ?? "Unknown artist"}
+                      </div>
+                      {listener.spotifyUrl ? (
+                        <a
+                          className="text-xs font-medium text-foreground hover:underline"
+                          href={listener.spotifyUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open in Spotify
+                        </a>
                       ) : null}
                     </div>
                   </div>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                No active members yet.
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+              No one is listening yet.
+            </div>
+          )}
+        </section>
 
-        <div className="space-y-6">
-          <Card className="border-border/70 bg-card/80 shadow-sm backdrop-blur">
+        <div>
+          <Card className="border-border/70 bg-card/80 shadow-sm backdrop-blur mb-4">
             <CardHeader>
               <CardTitle>Room details</CardTitle>
               <CardDescription>Key info about this room.</CardDescription>
@@ -238,51 +343,118 @@ function RoomPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/70 bg-card/80 shadow-sm backdrop-blur">
-            <CardHeader>
-              <CardTitle>Room actions</CardTitle>
-              <CardDescription>Actions you can do for this room.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {data.room.isOwner ? (
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => setTransferDialogOpen(true)}
-                >
-                  <Crown className="mr-2 h-4 w-4" />
-                  Transfer ownership
-                </Button>
-              ) : null}
-              {!data.room.isOwner ? (
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => leaveMutation.mutate()}
-                  disabled={leaveMutation.isPending}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Leave room
-                </Button>
-              ) : null}
-              {data.room.isOwner ? (
-                <Button
-                  className="w-full"
-                  variant="destructive"
-                  onClick={() => setDeleteDialogOpen(true)}
-                  disabled={deleteMutation.isPending}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete room
-                </Button>
-              ) : null}
-              <Separator />
-              <Button asChild variant="ghost" className="w-full">
-                <Link to="/dashboard">Back to dashboard</Link>
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="flex rounded-2xl border border-border/60 bg-background p-1 mb-2">
+            <Button
+              className="flex-1"
+              variant={sidebarTab === "members" ? "secondary" : "ghost"}
+              onClick={() => setSidebarTab("members")}
+            >
+              Members
+            </Button>
+            <Button
+              className="flex-1"
+              variant={sidebarTab === "actions" ? "secondary" : "ghost"}
+              onClick={() => setSidebarTab("actions")}
+            >
+              Actions
+            </Button>
+          </div>
 
+          {sidebarTab === "members" ? (
+            <Card className="border-border/70 bg-card/80 shadow-sm backdrop-blur">
+              <CardHeader>
+                <CardTitle>Members</CardTitle>
+                <CardDescription>Everyone in this room.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {membersQuery.isPending ? (
+                  <div className="space-y-3 text-sm text-muted-foreground">
+                    Loading members...
+                  </div>
+                ) : members.length ? (
+                  members.map((member) => {
+                    const presence = presenceByUserId[member.userId];
+                    const statusDot =
+                      presence?.state === "playing"
+                        ? "bg-emerald-500"
+                        : presence?.state === "paused"
+                          ? "bg-amber-500"
+                          : null;
+                    return (
+                      <div
+                        key={member.userId}
+                        className="flex items-center justify-between rounded-2xl border border-border/60 bg-background px-4 py-3"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{member.name}</span>
+                          {member.role === "owner" ? (
+                            <Badge variant="secondary">Owner</Badge>
+                          ) : null}
+                        </div>
+                        {statusDot ? (
+                          <span
+                            className={`h-2.5 w-2.5 rounded-full ${statusDot}`}
+                            aria-hidden
+                          />
+                        ) : null}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                    No members yet.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-border/70 bg-card/80 shadow-sm backdrop-blur">
+              <CardHeader>
+                <CardTitle>Room actions</CardTitle>
+                <CardDescription>
+                  Actions you can do for this room.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {data.room.isOwner ? (
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={() => setTransferDialogOpen(true)}
+                  >
+                    <Crown className="mr-2 h-4 w-4" />
+                    Transfer ownership
+                  </Button>
+                ) : null}
+                {!data.room.isOwner ? (
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={() => leaveMutation.mutate()}
+                    disabled={leaveMutation.isPending}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Leave room
+                  </Button>
+                ) : null}
+                {data.room.isOwner ? (
+                  <Button
+                    className="w-full"
+                    variant="destructive"
+                    onClick={() => setDeleteDialogOpen(true)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete room
+                  </Button>
+                ) : null}
+                <Separator />
+                <Button asChild variant="ghost" className="w-full">
+                  <Link to="/dashboard">Back to dashboard</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
@@ -330,7 +502,10 @@ function RoomPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -359,7 +534,10 @@ function RoomPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button
