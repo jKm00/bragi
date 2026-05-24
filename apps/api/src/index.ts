@@ -202,6 +202,7 @@ const routes = app
         id: rooms.id,
         name: rooms.name,
         inviteToken: rooms.inviteToken,
+        ownerUserId: rooms.ownerUserId,
       })
       .from(rooms)
       .leftJoin(roomMemberships, eq(roomMemberships.roomId, rooms.id))
@@ -214,7 +215,12 @@ const routes = app
 
     const uniqueRooms = Array.from(
       new Map(rows.map((room) => [room.id, room])).values(),
-    );
+    ).map((room) => ({
+      id: room.id,
+      name: room.name,
+      inviteToken: room.ownerUserId === session.user.id ? room.inviteToken : null,
+      isOwner: room.ownerUserId === session.user.id,
+    }));
 
     return c.json({ rooms: uniqueRooms });
   })
@@ -357,6 +363,7 @@ const routes = app
         name: room.name,
         isOwner: room.ownerUserId === session.user.id,
         role: membership?.role ?? (room.ownerUserId === session.user.id ? "owner" : "member"),
+        inviteToken: room.ownerUserId === session.user.id ? room.inviteToken : null,
       },
     });
   })

@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Crown, LogOut, Trash2 } from "lucide-react";
+import {
+  Crown,
+  Eye,
+  LogOut,
+  Trash2,
+  Clipboard,
+  EyeClosed,
+  EyeOff,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { apiClient } from "@/lib/api-client";
 import { subscribeToPresence } from "@/lib/realtime";
+import { Input } from "@/components/ui/input";
 
 type RoomAccessResponse =
   | {
@@ -29,6 +38,7 @@ type RoomAccessResponse =
         name: string | null;
         isOwner: boolean;
         role: "owner" | "member";
+        inviteToken: string | null;
       };
       accessible: true;
     }
@@ -103,6 +113,7 @@ function RoomPage() {
     Record<string, RealtimePresenceSnapshot>
   >({});
   const [presenceLoading, setPresenceLoading] = useState(true);
+  const [showInvite, setShowInvite] = useState(false);
 
   const membersQuery = useQuery({
     queryKey: ["room-members", data.accessible ? data.room.id : "no-room"],
@@ -361,6 +372,35 @@ function RoomPage() {
         </section>
 
         <div>
+          {data.room.isOwner && data.room.inviteToken && (
+            <div className="flex gap-1 mb-4">
+              <Input
+                value={
+                  showInvite
+                    ? `${window.location.origin}/rooms/join?code=${data.room.inviteToken}`
+                    : "************************"
+                }
+                readOnly
+                className="grow"
+              />
+              <Button
+                variant="outline"
+                onClick={() => setShowInvite((prev) => !prev)}
+              >
+                {showInvite ? <Eye /> : <EyeOff />}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  navigator.clipboard.writeText(
+                    `${window.location.origin}/rooms/join?code=${data.room.inviteToken}`,
+                  )
+                }
+              >
+                <Clipboard />
+              </Button>
+            </div>
+          )}
           <Card className="border-border/70 bg-card/80 shadow-sm backdrop-blur mb-4">
             <CardHeader>
               <CardTitle>Room details</CardTitle>
