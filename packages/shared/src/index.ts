@@ -25,6 +25,7 @@ export interface PresenceSnapshot {
 export interface RealtimePresenceSnapshot {
   userId: string;
   state: PresenceState;
+  isMuted: boolean;
   trackId: string | null;
   trackName: string | null;
   artistName: string | null;

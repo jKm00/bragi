@@ -4,6 +4,7 @@ import { apiClient } from "./api-client";
 type RealtimePresenceSnapshot = {
   userId: string;
   state: "playing" | "paused" | "offline" | "hidden" | "private";
+  isMuted: boolean;
   trackId: string | null;
   trackName: string | null;
   artistName: string | null;
@@ -97,7 +98,10 @@ async function pollSpotify() {
     }
 
     const data = (await res.json()) as { snapshot: RealtimePresenceSnapshot };
-    lastSnapshot = data.snapshot;
+    lastSnapshot = {
+      ...data.snapshot,
+      isMuted: data.snapshot.isMuted ?? false,
+    };
     const playback = getPlaybackSnapshot(data.snapshot);
     schedulePoll(calculateNextPoll(data.snapshot, playback));
   } catch (error) {

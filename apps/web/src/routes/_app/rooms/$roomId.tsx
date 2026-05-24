@@ -61,6 +61,7 @@ type MembersResponse = {
 type RealtimePresenceSnapshot = {
   userId: string;
   state: "playing" | "paused" | "offline" | "hidden" | "private";
+  isMuted: boolean;
   trackId: string | null;
   trackName: string | null;
   artistName: string | null;
@@ -313,12 +314,15 @@ function RoomPage() {
               {activeListeners.map((listener) => {
                 const member = memberLookup.get(listener.userId);
                 const isPlaying = listener.state === "playing";
+                const isMuted = listener.isMuted && isPlaying;
                 return (
                   <div
                     key={listener.userId}
                     className={`flex gap-4 rounded-2xl border p-4 ${
                       isPlaying
-                        ? "border-emerald-500/30 bg-emerald-500/5"
+                        ? isMuted
+                          ? "border-sky-500/30 bg-sky-500/5"
+                          : "border-emerald-500/30 bg-emerald-500/5"
                         : "border-amber-500/30 bg-amber-500/5"
                     }`}
                   >
@@ -378,11 +382,13 @@ function RoomPage() {
                               variant="outline"
                               className={
                                 isPlaying
-                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                                  ? isMuted
+                                    ? "border-sky-500/40 bg-sky-500/10 text-sky-500"
+                                    : "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
                                   : "border-amber-500/40 bg-amber-500/10 text-amber-500"
                               }
                             >
-                              {isPlaying ? "Playing" : "Paused"}
+                              {isPlaying ? (isMuted ? "Muted" : "Playing") : "Paused"}
                             </Badge>
                           </div>
                         </div>

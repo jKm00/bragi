@@ -6,6 +6,7 @@ import { roomMemberships, rooms } from "./db/schema.js";
 export type PresenceSnapshot = {
   userId: string;
   state: "playing" | "paused" | "offline" | "hidden" | "private";
+  isMuted: boolean;
   trackId: string | null;
   trackName: string | null;
   artistName: string | null;
