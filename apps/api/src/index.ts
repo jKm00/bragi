@@ -1,9 +1,9 @@
 import { serve } from "@hono/node-server";
-import { eq, or } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { Hono } from "hono";
 import { auth } from "./auth.js";
 import { db } from "./db/client.js";
-import { roomMemberships, rooms } from "./db/schema.js";
+import { roomMemberships, rooms, user } from "./db/schema.js";
 import { cors } from "hono/cors";
 
 const port = Number(process.env.PORT ?? 3000);
@@ -95,6 +95,13 @@ const routes = app
         inviteToken: rooms.inviteToken,
       });
 
+    await db.insert(roomMemberships).values({
+      roomId: inserted[0].id,
+      userId: session.user.id,
+      role: "owner",
+      status: "active",
+    });
+
     return c.json(inserted[0], 201);
   })
   .post("/api/v1/rooms/join", async (c) => {
@@ -127,6 +134,19 @@ const routes = app
     if (!room) {
       return c.json({ message: "Invalid invite link" }, 404);
     }
+
+    if (room.ownerUserId === session.user.id) {
+      return c.json({ room });
+    }
+
+    await db
+      .delete(roomMemberships)
+      .where(
+        and(
+          eq(roomMemberships.roomId, room.id),
+          eq(roomMemberships.userId, session.user.id),
+        ),
+      );
 
     await db
       .insert(roomMemberships)
@@ -165,12 +185,13 @@ const routes = app
       return c.json({ accessible: false, message: "Room not found" }, 404);
 
     const membership = await db
-      .select({ id: roomMemberships.id })
+      .select({ id: roomMemberships.id, role: roomMemberships.role })
       .from(roomMemberships)
       .where(
-        or(
+        and(
           eq(roomMemberships.roomId, room.id),
           eq(roomMemberships.userId, session.user.id),
+          eq(roomMemberships.status, "active"),
         ),
       )
       .limit(1)
@@ -192,8 +213,190 @@ const routes = app
       room: {
         id: room.id,
         name: room.name,
+        isOwner: room.ownerUserId === session.user.id,
+        role: membership?.role ?? (room.ownerUserId === session.user.id ? "owner" : "member"),
       },
     });
+  })
+  .get("/api/v1/rooms/:roomId/members", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+
+    if (!session) return c.json({ message: "Unauthorized" }, 401);
+
+    const roomId = c.req.param("roomId");
+    const room = await db
+      .select({ id: rooms.id, ownerUserId: rooms.ownerUserId })
+      .from(rooms)
+      .where(eq(rooms.id, roomId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (!room) return c.json({ message: "Room not found" }, 404);
+
+    const membership = await db
+      .select({ id: roomMemberships.id })
+      .from(roomMemberships)
+      .where(
+        and(
+          eq(roomMemberships.roomId, room.id),
+          eq(roomMemberships.userId, session.user.id),
+          eq(roomMemberships.status, "active"),
+        ),
+      )
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (room.ownerUserId !== session.user.id && !membership) {
+      return c.json({ message: "Forbidden" }, 403);
+    }
+
+    const rows = await db
+      .select({
+        userId: user.id,
+        name: user.name,
+        image: user.image,
+        role: roomMemberships.role,
+        status: roomMemberships.status,
+      })
+      .from(roomMemberships)
+      .innerJoin(user, eq(user.id, roomMemberships.userId))
+      .where(
+        and(
+          eq(roomMemberships.roomId, room.id),
+          eq(roomMemberships.status, "active"),
+        ),
+      );
+
+    const members = [
+      {
+        userId: room.ownerUserId,
+        name: room.ownerUserId === session.user.id ? "You" : "Owner",
+        image: null,
+        role: "owner" as const,
+        status: "active" as const,
+      },
+      ...rows.filter((member) => member.userId !== room.ownerUserId),
+    ];
+
+    return c.json({ members });
+  })
+  .post("/api/v1/rooms/:roomId/leave", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+
+    if (!session) return c.json({ message: "Unauthorized" }, 401);
+
+    const roomId = c.req.param("roomId");
+    const room = await db
+      .select({ id: rooms.id, ownerUserId: rooms.ownerUserId })
+      .from(rooms)
+      .where(eq(rooms.id, roomId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (!room) return c.json({ message: "Room not found" }, 404);
+
+    if (room.ownerUserId === session.user.id) {
+      return c.json({ message: "Owner must transfer ownership or delete the room" }, 400);
+    }
+
+    await db
+      .update(roomMemberships)
+      .set({ status: "left", updatedAt: new Date() })
+      .where(
+        and(
+          eq(roomMemberships.roomId, room.id),
+          eq(roomMemberships.userId, session.user.id),
+          eq(roomMemberships.status, "active"),
+        ),
+      );
+
+    return c.json({ ok: true });
+  })
+  .post("/api/v1/rooms/:roomId/delete", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+
+    if (!session) return c.json({ message: "Unauthorized" }, 401);
+
+    const roomId = c.req.param("roomId");
+    const room = await db
+      .select({ id: rooms.id, ownerUserId: rooms.ownerUserId })
+      .from(rooms)
+      .where(eq(rooms.id, roomId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (!room) return c.json({ message: "Room not found" }, 404);
+
+    if (room.ownerUserId !== session.user.id) {
+      return c.json({ message: "Forbidden" }, 403);
+    }
+
+    await db.delete(rooms).where(eq(rooms.id, room.id));
+
+    return c.json({ ok: true });
+  })
+  .post("/api/v1/rooms/:roomId/transfer/:userId", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+
+    if (!session) return c.json({ message: "Unauthorized" }, 401);
+
+    const roomId = c.req.param("roomId");
+    const userId = c.req.param("userId");
+
+    const room = await db
+      .select({ id: rooms.id, ownerUserId: rooms.ownerUserId })
+      .from(rooms)
+      .where(eq(rooms.id, roomId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (!room) return c.json({ message: "Room not found" }, 404);
+
+    if (room.ownerUserId !== session.user.id) {
+      return c.json({ message: "Forbidden" }, 403);
+    }
+
+    const targetMembership = await db
+      .select({ id: roomMemberships.id })
+      .from(roomMemberships)
+      .where(
+        and(
+          eq(roomMemberships.roomId, room.id),
+          eq(roomMemberships.userId, userId),
+          eq(roomMemberships.status, "active"),
+        ),
+      )
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (!targetMembership) {
+      return c.json({ message: "Member not found" }, 404);
+    }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(rooms)
+        .set({ ownerUserId: userId, updatedAt: new Date() })
+        .where(eq(rooms.id, room.id));
+
+      await tx
+        .update(roomMemberships)
+        .set({ role: "owner", updatedAt: new Date() })
+        .where(eq(roomMemberships.id, targetMembership.id));
+
+      await tx
+        .update(roomMemberships)
+        .set({ role: "member", updatedAt: new Date() })
+        .where(
+          and(
+            eq(roomMemberships.roomId, room.id),
+            eq(roomMemberships.userId, room.ownerUserId),
+            eq(roomMemberships.status, "active"),
+          ),
+        );
+    });
+
+    return c.json({ ok: true });
   });
 
 export type ApiType = typeof routes;
