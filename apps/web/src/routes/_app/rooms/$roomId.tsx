@@ -7,8 +7,8 @@ import {
   LogOut,
   Trash2,
   Clipboard,
-  EyeClosed,
   EyeOff,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -266,27 +266,30 @@ function RoomPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 py-10">
+    <main className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-8">
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
+          <Button asChild variant="link" className="mb-4 px-0">
+            <Link to="/dashboard">
+              <ArrowLeft />
+              Back to dashboard
+            </Link>
+          </Button>
           <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">
             Room
           </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+          <h1 className="text-3xl font-semibold tracking-tight">
             {data.room.name ?? "Untitled room"}
           </h1>
         </div>
         <div className="flex items-center gap-3">
-          <Button asChild variant="ghost">
-            <Link to="/dashboard">Back to dashboard</Link>
-          </Button>
           <Badge variant={data.room.isOwner ? "default" : "secondary"}>
             {data.room.isOwner ? "Owner" : "Member"}
           </Badge>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_0.4fr]">
         <section className="space-y-4">
           <div className="space-y-2">
             <h2 className="text-xl font-semibold">Active listeners</h2>

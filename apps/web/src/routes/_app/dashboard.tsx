@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
-import { Eye, EyeOff, Clipboard } from "lucide-react";
+import { Eye, EyeOff, Clipboard, LogOut } from "lucide-react";
 
 type Room = {
   id: string;
@@ -94,7 +94,7 @@ function DashboardHomePage() {
             </h1>
           </div>
           <Button variant="ghost" onClick={signOut}>
-            Sign out
+            Sign out <LogOut />
           </Button>
         </div>
 
