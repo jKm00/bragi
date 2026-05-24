@@ -25,6 +25,7 @@
     "dotenv": "^16.6.1",
     "drizzle-orm": "^1.0.0-beta.18-7eb39f0",
     "hono": "^4.6.10",
+    "pg": "^8.21.0",
     "ws": "^8.21.0"
   },
   "devDependencies": {
