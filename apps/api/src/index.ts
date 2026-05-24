@@ -5,7 +5,12 @@ import { createServer } from "http";
 import { attachWebSocket } from "./ws-server.js";
 import { auth } from "./auth.js";
 import { db } from "./db/client.js";
-import { presenceSnapshots, roomMemberships, rooms, user } from "./db/schema.js";
+import {
+  presenceSnapshots,
+  roomMemberships,
+  rooms,
+  user,
+} from "./db/schema.js";
 import { fanoutPresence } from "./realtime.js";
 import { cors } from "hono/cors";
 
@@ -23,7 +28,10 @@ export const app = new Hono<{
 app.use(
   "/api/*",
   cors({
-    origin: ["http://127.0.0.1:5173"],
+    origin:
+      process.env.NODE_ENV === "development"
+        ? ["http://127.0.0.1:5173", "http://127.0.0.1:4173"]
+        : [],
     credentials: true,
   }),
 );
@@ -219,7 +227,8 @@ const routes = app
     ).map((room) => ({
       id: room.id,
       name: room.name,
-      inviteToken: room.ownerUserId === session.user.id ? room.inviteToken : null,
+      inviteToken:
+        room.ownerUserId === session.user.id ? room.inviteToken : null,
       isOwner: room.ownerUserId === session.user.id,
     }));
 
@@ -363,8 +372,11 @@ const routes = app
         id: room.id,
         name: room.name,
         isOwner: room.ownerUserId === session.user.id,
-        role: membership?.role ?? (room.ownerUserId === session.user.id ? "owner" : "member"),
-        inviteToken: room.ownerUserId === session.user.id ? room.inviteToken : null,
+        role:
+          membership?.role ??
+          (room.ownerUserId === session.user.id ? "owner" : "member"),
+        inviteToken:
+          room.ownerUserId === session.user.id ? room.inviteToken : null,
       },
     });
   })
@@ -473,7 +485,9 @@ const routes = app
       )
       .then((rows) => rows.map((row) => row.userId));
 
-    const uniqueMemberIds = Array.from(new Set([...memberIds, room.ownerUserId]));
+    const uniqueMemberIds = Array.from(
+      new Set([...memberIds, room.ownerUserId]),
+    );
 
     const snapshots = await db
       .select({
@@ -510,7 +524,10 @@ const routes = app
     if (!room) return c.json({ message: "Room not found" }, 404);
 
     if (room.ownerUserId === session.user.id) {
-      return c.json({ message: "Owner must transfer ownership or delete the room" }, 400);
+      return c.json(
+        { message: "Owner must transfer ownership or delete the room" },
+        400,
+      );
     }
 
     await db
