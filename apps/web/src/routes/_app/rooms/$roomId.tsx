@@ -9,6 +9,8 @@ import {
   Clipboard,
   EyeOff,
   ArrowLeft,
+  ExternalLink,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -303,9 +305,9 @@ function RoomPage() {
             </div>
           ) : activeListeners.length ? (
             <div
-              className="grid gap-2"
+              className="grid gap-3"
               style={{
-                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
               }}
             >
               {activeListeners.map((listener) => {
@@ -314,9 +316,13 @@ function RoomPage() {
                 return (
                   <div
                     key={listener.userId}
-                    className="flex gap-4 rounded-2xl border border-border/60 bg-background p-4"
+                    className={`flex gap-4 rounded-2xl border p-4 ${
+                      isPlaying
+                        ? "border-emerald-500/30 bg-emerald-500/5"
+                        : "border-amber-500/30 bg-amber-500/5"
+                    }`}
                   >
-                    <div className="h-16 w-16 overflow-hidden rounded-xl bg-muted/40">
+                    <div className="h-20 2-20 shrink-0 overflow-hidden rounded-xl bg-muted/40">
                       {listener.albumArtUrl ? (
                         <img
                           src={listener.albumArtUrl}
@@ -330,38 +336,57 @@ function RoomPage() {
                         </div>
                       )}
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          {member?.name ?? "Listener"}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className={
-                            isPlaying
-                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
-                              : "border-amber-500/40 bg-amber-500/10 text-amber-500"
-                          }
-                        >
-                          {isPlaying ? "Playing" : "Paused"}
-                        </Badge>
+                    <div className="flex-1 space-y-2">
+                      <div className="flex justify-between">
+                        <div>
+                          <div className="text-base font-semibold text-foreground">
+                            {listener.trackName ?? "Unknown track"}
+                          </div>
+                          <div className="text-sm text-muted-foreground mb-3">
+                            {listener.artistName ?? "Unknown artist"}
+                            {listener.albumName
+                              ? ` · ${listener.albumName}`
+                              : ""}
+                          </div>
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <User className="size-4" />{" "}
+                            <p className="text-sm">
+                              {member?.name ?? "Anonymous"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="flex items-center gap-2">
+                            {listener.spotifyUrl ? (
+                              <a
+                                href={listener.spotifyUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex gap-1 text-xs text-muted-foreground"
+                              >
+                                <span className="max-sm:hidden">
+                                  Open in Spotify
+                                </span>
+                                <ExternalLink className="size-4" />
+                              </a>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                Spotify link unavailable
+                              </span>
+                            )}
+                            <Badge
+                              variant="outline"
+                              className={
+                                isPlaying
+                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                                  : "border-amber-500/40 bg-amber-500/10 text-amber-500"
+                              }
+                            >
+                              {isPlaying ? "Playing" : "Paused"}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-sm font-medium text-foreground">
-                        {listener.trackName ?? "Unknown track"}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {listener.artistName ?? "Unknown artist"}
-                      </div>
-                      {listener.spotifyUrl ? (
-                        <a
-                          className="text-xs font-medium text-foreground hover:underline"
-                          href={listener.spotifyUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Open in Spotify
-                        </a>
-                      ) : null}
                     </div>
                   </div>
                 );
