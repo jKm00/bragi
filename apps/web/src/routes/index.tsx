@@ -67,7 +67,8 @@ function LandingPage() {
           </div>
         ) : (
           <div className="flex flex-wrap gap-3">
-            <Button onClick={signIn} size="lg">
+            <Button onClick={signIn} size="lg" className="rounded-full gap-2">
+              <img src="/spotify-logo-black.svg" alt="" className="h-5 w-5" />
               Sign in with Spotify
             </Button>
           </div>
