@@ -27,7 +27,7 @@ export const app = new Hono<{
 // Cors config
 const allowedOrigins =
   process.env.NODE_ENV === "production"
-    ? ["https://bragi.edvardsen.dev/"]
+    ? ["https://bragi.edvardsen.dev"]
     : ["http://127.0.0.1:5173", "http://127.0.0.1:4173"];
 
 if (allowedOrigins.length > 0) {
