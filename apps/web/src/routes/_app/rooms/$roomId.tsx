@@ -327,7 +327,7 @@ function RoomPage() {
                         : "border-amber-500/30 bg-amber-500/5"
                     }`}
                   >
-                    <div className="h-20 2-20 shrink-0 overflow-hidden rounded-xl bg-muted/40">
+                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted/40">
                       {listener.albumArtUrl ? (
                         <img
                           src={listener.albumArtUrl}
