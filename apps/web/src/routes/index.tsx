@@ -16,12 +16,13 @@ function LandingPage() {
   const { redirect, code } = Route.useSearch();
 
   const signIn = async () => {
+    const origin = window.location.origin;
     await authClient.signIn.social({
       provider: "spotify",
       callbackURL:
         redirect === "join" && code
-          ? `http://127.0.0.1:5173/rooms/join?code=${code}`
-          : "http://127.0.0.1:5173/dashboard",
+          ? `${origin}/rooms/join?code=${code}`
+          : `${origin}/dashboard`,
     });
   };
 
