@@ -24,7 +24,7 @@ export const auth = betterAuth({
   },
   trustedOrigins: isLocalDev
     ? ["http://127.0.0.1:3000", "http://127.0.0.1:5173"]
-    : ["bragi.api.edvardsen.dev", "bragi.edvardsen.dev"],
+    : ["https://api.bragi.edvardsen.dev", "https://bragi.edvardsen.dev"],
   account: {
     encryptOAuthTokens: true,
     updateAccountOnSignIn: true,
