@@ -419,7 +419,6 @@ function RoomPage() {
                                   href={listener.spotifyUrl}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="flex gap-1 text-xs text-muted-foreground"
                                 >
                                   <span className="sr-only">
                                     Open in Spotify
