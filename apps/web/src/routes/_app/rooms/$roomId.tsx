@@ -121,6 +121,7 @@ function RoomPage() {
   const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
   const [embedTitle, setEmbedTitle] = useState<string | null>(null);
+  const [embedSpotifyUrl, setEmbedSpotifyUrl] = useState<string | null>(null);
 
   const membersQuery = useQuery({
     queryKey: ["room-members", data.accessible ? data.room.id : "no-room"],
@@ -262,6 +263,7 @@ function RoomPage() {
   const handleOpenEmbed = (listener: RealtimePresenceSnapshot) => {
     if (!listener.spotifyUrl) return;
     setEmbedUrl(getEmbedUrl(listener.spotifyUrl));
+    setEmbedSpotifyUrl(listener.spotifyUrl);
     setEmbedTitle(listener.trackName ?? "Spotify preview");
     setEmbedDialogOpen(true);
   };
@@ -289,8 +291,18 @@ function RoomPage() {
       <Dialog open={embedDialogOpen} onOpenChange={setEmbedDialogOpen}>
         <DialogContent className="max-w-[90%]">
           <DialogHeader>
-            <DialogTitle>{embedTitle ?? "Spotify preview"}</DialogTitle>
-            <DialogDescription>Listen to the full track.</DialogDescription>
+            <DialogTitle>Song Preview</DialogTitle>
+            <DialogDescription>
+              Preview only, {" "}
+              <a
+                href={embedSpotifyUrl ?? "#"}
+                target="_blank"
+                rel="noreferrer"
+              >
+                open in Spotify
+              </a>{" "}
+              for full playback.
+            </DialogDescription>
           </DialogHeader>
           {embedUrl ? (
             <div className="relative border rounded-xl overflow-hidden">
