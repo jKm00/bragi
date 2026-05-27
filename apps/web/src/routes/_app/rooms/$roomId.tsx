@@ -10,6 +10,7 @@ import {
   EyeOff,
   ArrowLeft,
   ExternalLink,
+  Play,
   User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ type RealtimePresenceSnapshot = {
   albumName: string | null;
   albumArtUrl: string | null;
   spotifyUrl: string | null;
+  previewUrl: string | null;
   progressMs: number | null;
   durationMs: number | null;
   syncedAt: string | null;
@@ -116,6 +118,9 @@ function RoomPage() {
   >({});
   const [presenceLoading, setPresenceLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
+  const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
+  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
+  const [embedTitle, setEmbedTitle] = useState<string | null>(null);
 
   const membersQuery = useQuery({
     queryKey: ["room-members", data.accessible ? data.room.id : "no-room"],
@@ -249,6 +254,18 @@ function RoomPage() {
     });
   }, [data.accessible, data.accessible ? data.room.id : ""]);
 
+  const getEmbedUrl = (spotifyUrl: string) => {
+    const url = new URL(spotifyUrl);
+    return `https://open.spotify.com/embed${url.pathname}`;
+  };
+
+  const handleOpenEmbed = (listener: RealtimePresenceSnapshot) => {
+    if (!listener.spotifyUrl) return;
+    setEmbedUrl(getEmbedUrl(listener.spotifyUrl));
+    setEmbedTitle(listener.trackName ?? "Spotify preview");
+    setEmbedDialogOpen(true);
+  };
+
   if (!data.accessible) {
     return (
       <main className="mx-auto flex min-h-screen max-w-2xl items-center px-4 py-10">
@@ -269,6 +286,27 @@ function RoomPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-8">
+      <Dialog open={embedDialogOpen} onOpenChange={setEmbedDialogOpen}>
+        <DialogContent className="max-w-[90%]">
+          <DialogHeader>
+            <DialogTitle>{embedTitle ?? "Spotify preview"}</DialogTitle>
+            <DialogDescription>Listen to the full track.</DialogDescription>
+          </DialogHeader>
+          {embedUrl ? (
+            <div className="relative border rounded-xl overflow-hidden">
+              <div className="absolute inset-0 -z-10 bg-muted animate-pulse"></div>
+              <iframe
+                title={embedTitle ?? "Spotify preview"}
+                src={embedUrl}
+                width="100%"
+                height="352"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+              />
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <Button asChild variant="link" className="mb-4 px-0">
@@ -318,6 +356,9 @@ function RoomPage() {
               {activeListeners.map((listener) => {
                 const member = memberLookup.get(listener.userId);
                 const isPlaying = listener.state === "playing";
+                const embedUrl = listener.spotifyUrl
+                  ? getEmbedUrl(listener.spotifyUrl)
+                  : null;
                 return (
                   <div
                     key={listener.userId}
@@ -362,22 +403,30 @@ function RoomPage() {
                         </div>
                         <div className="flex items-start">
                           <div className="flex items-center gap-2">
-                            {listener.spotifyUrl ? (
-                              <a
-                                href={listener.spotifyUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex gap-1 text-xs text-muted-foreground"
+                            {embedUrl && (
+                              <Button
+                                variant="outline"
+                                size="icon-sm"
+                                onClick={() => handleOpenEmbed(listener)}
+                                aria-label="Open Spotify player"
                               >
-                                <span className="max-sm:hidden">
-                                  Open in Spotify
-                                </span>
-                                <ExternalLink className="size-4" />
-                              </a>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                Spotify link unavailable
-                              </span>
+                                <Play className="size-4" />
+                              </Button>
+                            )}
+                            {listener.spotifyUrl && (
+                              <Button asChild variant="outline" size="icon-sm">
+                                <a
+                                  href={listener.spotifyUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex gap-1 text-xs text-muted-foreground"
+                                >
+                                  <span className="sr-only">
+                                    Open in Spotify
+                                  </span>
+                                  <ExternalLink className="size-4" />
+                                </a>
+                              </Button>
                             )}
                             <Badge
                               variant="outline"
