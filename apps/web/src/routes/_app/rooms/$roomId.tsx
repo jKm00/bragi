@@ -309,12 +309,7 @@ function RoomPage() {
               Loading active listeners...
             </div>
           ) : activeListeners.length ? (
-            <div
-              className="grid gap-3"
-              style={{
-                gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-              }}
-            >
+            <div className="grid gap-2">
               {activeListeners.map((listener) => {
                 const member = memberLookup.get(listener.userId);
                 const isPlaying = listener.state === "playing";
