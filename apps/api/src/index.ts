@@ -516,7 +516,7 @@ const routes = app
     const expiredSnapshots = snapshots.filter((snapshot) => {
       if (!snapshot.durationMs) return false;
       if (!snapshot.syncedAt) return false;
-      if (!(["playing", "paused"] as const).includes(snapshot.state)) {
+      if (snapshot.state !== "playing" && snapshot.state !== "paused") {
         return false;
       }
       const syncedAtMs =
@@ -572,7 +572,7 @@ const routes = app
         snapshot.spotifyUrl = null;
         snapshot.progressMs = null;
         snapshot.durationMs = null;
-        snapshot.syncedAt = cleanupSyncedAtIso;
+        snapshot.syncedAt = cleanupSyncedAt;
         snapshot.state = "offline";
 
         cleanedSnapshots.push({
