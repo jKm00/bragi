@@ -16,6 +16,8 @@ import { cors } from "hono/cors";
 
 const port = Number(process.env.PORT ?? 3000);
 
+const PRESENCE_SNAPSHOT_BUFFER_MS = 5 * 60 * 1000;
+
 // Init app
 export const app = new Hono<{
   Variables: {
@@ -509,6 +511,91 @@ const routes = app
       })
       .from(presenceSnapshots)
       .where(inArray(presenceSnapshots.userId, uniqueMemberIds));
+
+    const now = Date.now();
+    const expiredSnapshots = snapshots.filter((snapshot) => {
+      if (!snapshot.durationMs) return false;
+      if (!snapshot.syncedAt) return false;
+      if (!(["playing", "paused"] as const).includes(snapshot.state)) {
+        return false;
+      }
+      const syncedAtMs =
+        snapshot.syncedAt instanceof Date
+          ? snapshot.syncedAt.getTime()
+          : new Date(snapshot.syncedAt).getTime();
+      if (!Number.isFinite(syncedAtMs)) return false;
+      return now - syncedAtMs > snapshot.durationMs + PRESENCE_SNAPSHOT_BUFFER_MS;
+    });
+
+    if (expiredSnapshots.length > 0) {
+      const expiredUserIds = expiredSnapshots.map((snapshot) => snapshot.userId);
+      const cleanupSyncedAt = new Date();
+
+      await db
+        .update(presenceSnapshots)
+        .set({
+          trackId: null,
+          trackName: null,
+          artistName: null,
+          albumName: null,
+          albumArtUrl: null,
+          spotifyUrl: null,
+          progressMs: null,
+          durationMs: null,
+          syncedAt: cleanupSyncedAt,
+          state: "offline",
+        })
+        .where(inArray(presenceSnapshots.userId, expiredUserIds));
+
+      const cleanupSyncedAtIso = cleanupSyncedAt.toISOString();
+      const cleanedSnapshots = [] as {
+        userId: string;
+        state: "offline";
+        trackId: null;
+        trackName: null;
+        artistName: null;
+        albumName: null;
+        albumArtUrl: null;
+        spotifyUrl: null;
+        progressMs: null;
+        durationMs: null;
+        syncedAt: string;
+      }[];
+
+      for (const snapshot of snapshots) {
+        if (!expiredUserIds.includes(snapshot.userId)) continue;
+        snapshot.trackId = null;
+        snapshot.trackName = null;
+        snapshot.artistName = null;
+        snapshot.albumName = null;
+        snapshot.albumArtUrl = null;
+        snapshot.spotifyUrl = null;
+        snapshot.progressMs = null;
+        snapshot.durationMs = null;
+        snapshot.syncedAt = cleanupSyncedAtIso;
+        snapshot.state = "offline";
+
+        cleanedSnapshots.push({
+          userId: snapshot.userId,
+          state: "offline",
+          trackId: null,
+          trackName: null,
+          artistName: null,
+          albumName: null,
+          albumArtUrl: null,
+          spotifyUrl: null,
+          progressMs: null,
+          durationMs: null,
+          syncedAt: cleanupSyncedAtIso,
+        });
+      }
+
+      await Promise.all(
+        cleanedSnapshots.map((snapshot) =>
+          fanoutPresence(snapshot.userId, snapshot),
+        ),
+      );
+    }
 
     return c.json({ snapshots });
   })
